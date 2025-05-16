@@ -32,8 +32,8 @@ const Sidebar: React.FC = () => {
 
   return (
     <div className="bg-sidebar h-full w-64 p-4 border-r border-border flex flex-col overflow-y-auto">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-4">Navigation</div>
-      <nav className="space-y-1">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground mb-4 mt-4">Navigation</div>
+      <nav className="space-y-2 flex-1 flex flex-col justify-center">
         <NavItem
           to="/"
           label="Quick Launch"

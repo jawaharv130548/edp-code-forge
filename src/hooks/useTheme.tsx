@@ -15,13 +15,17 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem('theme') as Theme | null;
     if (storedTheme) {
       setTheme(storedTheme);
       document.documentElement.classList.toggle('dark', storedTheme === 'dark');
+    } else {
+      // Set default to light mode if no stored preference
+      window.localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 
