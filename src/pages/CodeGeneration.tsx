@@ -7,8 +7,16 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Upload, RefreshCw, Code, Copy, Download, Save } from 'lucide-react';
+import { Upload, RefreshCw, Code, Copy, Download, Save, FileCode } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Interface for generated file
+interface GeneratedFile {
+  id: string;
+  name: string;
+  language: 'typescript' | 'html' | 'css' | 'java' | 'xml';
+  code: string;
+}
 
 const CodeGeneration: React.FC = () => {
   const [isFileUploaded, setIsFileUploaded] = useState(false);
@@ -17,12 +25,13 @@ const CodeGeneration: React.FC = () => {
   const [selectedCodeType, setSelectedCodeType] = useState<'frontend' | 'backend' | null>(null);
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
   const [promptText, setPromptText] = useState('');
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [generatedFiles, setGeneratedFiles] = useState<GeneratedFile[]>([]);
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [regenerationPrompt, setRegenerationPrompt] = useState('');
 
   const defaultPrompts = {
-    frontend: "Generate React TypeScript frontend code based on the summarized use case and design specifications. Include responsive UI components, form validations, and API calls.",
-    backend: "Generate Node.js TypeScript backend code based on the summarized use case and database design. Include API endpoints, database models, authentication, and validation."
+    frontend: "Generate React TypeScript and HTML frontend code based on the summarized use case and design specifications. Include responsive UI components, form validations, and API calls.",
+    backend: "Generate Spring Boot Java backend code based on the summarized use case and database design. Include RESTful API endpoints, service layers, repository implementations, and entity models."
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,156 +66,29 @@ const CodeGeneration: React.FC = () => {
     toast.info('Generating code...');
     
     setTimeout(() => {
-      const sampleCode = selectedCodeType === 'frontend' 
-        ? `// React TypeScript Component
-import React, { useState, useEffect } from 'react';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
-
-export const UserList: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch('/api/users');
-        if (!response.ok) {
-          throw new Error('Failed to fetch users');
-        }
-        const data = await response.json();
-        setUsers(data);
-      } catch (err) {
-        setError('Error fetching users');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchUsers();
-  }, []);
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <div className="user-list">
-      <h2>User List</h2>
-      <ul>
-        {users.map(user => (
-          <li key={user.id}>
-            <h3>{user.name}</h3>
-            <p>{user.email}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};`
-        : `// Node.js Express API with TypeScript
-import express, { Request, Response } from 'express';
-import { User, IUser } from '../models/User';
-import { authenticate } from '../middleware/auth';
-
-const router = express.Router();
-
-// Get all users
-router.get('/users', authenticate, async (req: Request, res: Response) => {
-  try {
-    const users = await User.find().select('-password');
-    return res.status(200).json(users);
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get user by ID
-router.get('/users/:id', authenticate, async (req: Request, res: Response) => {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    return res.status(200).json(user);
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Create new user
-router.post('/users', async (req: Request, res: Response) => {
-  try {
-    const { name, email, password } = req.body;
-    
-    // Check if user already exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-    
-    // Create new user
-    user = new User({
-      name,
-      email,
-      password,
-    });
-    
-    // Hash password and save user
-    await user.save();
-    
-    return res.status(201).json({ message: 'User created successfully' });
-  } catch (error) {
-    console.error('Error creating user:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-export default router;`;
+      const files: GeneratedFile[] = [];
       
-      setGeneratedCode(sampleCode);
-      toast.success('Code generated successfully');
-    }, 2000);
-  };
-
-  const handleRegenerateCode = () => {
-    if (!regenerationPrompt.trim()) {
-      toast.error('Please enter regeneration instructions');
-      return;
-    }
-    
-    toast.info('Regenerating code...');
-    
-    setTimeout(() => {
-      const newCode = selectedCodeType === 'frontend'
-        ? `// Regenerated React TypeScript Component based on feedback
-import React, { useState, useEffect } from 'react';
-import { Table, Button, Spinner, Alert } from './components/ui';
+      if (selectedCodeType === 'frontend') {
+        files.push({
+          id: 'component-ts',
+          name: 'UserList.tsx',
+          language: 'typescript',
+          code: `import React, { useState, useEffect } from 'react';
+import './UserList.css';
 
 interface User {
   id: number;
   name: string;
   email: string;
-  role: string; // Added role field based on feedback
+  role: string;
 }
 
 export const UserList: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Added search functionality as requested
   const [searchTerm, setSearchTerm] = useState<string>('');
-  
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -234,24 +116,22 @@ export const UserList: React.FC = () => {
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) return <Spinner />;
-  if (error) return <Alert variant="error">{error}</Alert>;
+  if (loading) return <div className="loading-spinner">Loading...</div>;
+  if (error) return <div className="error-message">Error: {error}</div>;
 
   return (
     <div className="user-list-container">
-      <div className="header">
-        <h2>User Management</h2>
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      <h2>User Management</h2>
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Search users..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
       
-      <Table>
+      <table className="user-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -267,182 +147,514 @@ export const UserList: React.FC = () => {
               <td>{user.email}</td>
               <td>{user.role}</td>
               <td>
-                <Button variant="primary" size="sm">Edit</Button>
-                <Button variant="danger" size="sm">Delete</Button>
+                <button className="btn btn-edit">Edit</button>
+                <button className="btn btn-delete">Delete</button>
               </td>
             </tr>
           ))}
         </tbody>
-      </Table>
+      </table>
       
       {filteredUsers.length === 0 && (
         <div className="no-results">No users found matching your search.</div>
       )}
     </div>
   );
-};`
-        : `// Regenerated Node.js Express API with TypeScript
-import express, { Request, Response } from 'express';
-import { User, IUser } from '../models/User';
-import { authenticate, authorize } from '../middleware/auth'; // Added role-based authorization
-import { validateUserInput } from '../validation/userValidation'; // Added validation
+};
+`
+        });
+        
+        files.push({
+          id: 'component-css',
+          name: 'UserList.css',
+          language: 'css',
+          code: `.user-list-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-const router = express.Router();
+h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
 
-// Get all users with pagination and filtering
-router.get('/users', authenticate, async (req: Request, res: Response) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const role = req.query.role as string;
-    const search = req.query.search as string;
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-table th,
+.user-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.user-table th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.user-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+.btn {
+  padding: 6px 12px;
+  margin-right: 5px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-edit {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.btn-delete {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+  font-size: 18px;
+  color: #666;
+}
+
+.error-message {
+  padding: 20px;
+  background-color: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.no-results {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .user-table {
+    font-size: 14px;
+  }
+  
+  .user-table th,
+  .user-table td {
+    padding: 8px;
+  }
+  
+  .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+`
+        });
+        
+        files.push({
+          id: 'html-template',
+          name: 'index.html',
+          language: 'html',
+          code: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <div class="logo">User Management</div>
+      <ul class="nav-links">
+        <li><a href="#" class="active">Users</a></li>
+        <li><a href="#">Roles</a></li>
+        <li><a href="#">Settings</a></li>
+      </ul>
+      <div class="user-profile">
+        <img src="avatar.png" alt="User Avatar">
+        <span>Admin</span>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <div id="root">
+      <!-- React App will mount here -->
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 User Management System. All rights reserved.</p>
+  </footer>
+
+  <script src="bundle.js"></script>
+</body>
+</html>
+`
+        });
+      } else {
+        files.push({
+          id: 'controller',
+          name: 'UserController.java',
+          language: 'java',
+          code: `package com.edp.usermanagement.controller;
+
+import com.edp.usermanagement.model.User;
+import com.edp.usermanagement.service.UserService;
+import com.edp.usermanagement.dto.UserDTO;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    private final UserService userService;
+
+    @Autowired
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<UserDTO>> getAllUsers(
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String search,
+            Pageable pageable) {
+        
+        Page<UserDTO> users = userService.findUsers(role, search, pageable);
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
+        return userService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserDTO userDTO) {
+        UserDTO createdUser = userService.createUser(userDTO);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UserDTO userDTO) {
+        
+        return userService.updateUser(id, userDTO)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (userService.deleteUser(id)) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+}
+`
+        });
+        
+        files.push({
+          id: 'service',
+          name: 'UserService.java',
+          language: 'java',
+          code: `package com.edp.usermanagement.service;
+
+import com.edp.usermanagement.model.User;
+import com.edp.usermanagement.repository.UserRepository;
+import com.edp.usermanagement.dto.UserDTO;
+import com.edp.usermanagement.mapper.UserMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    @Autowired
+    public UserService(UserRepository userRepository, UserMapper userMapper, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.userMapper = userMapper;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public Page<UserDTO> findUsers(String role, String search, Pageable pageable) {
+        Specification<User> spec = Specification.where(null);
+        
+        if (role != null && !role.isEmpty()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("role"), role));
+        }
+        
+        if (search != null && !search.isEmpty()) {
+            spec = spec.and((root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase() + "%"),
+                cb.like(cb.lower(root.get("email")), "%" + search.toLowerCase() + "%")
+            ));
+        }
+        
+        return userRepository.findAll(spec, pageable).map(userMapper::toDTO);
+    }
+
+    public Optional<UserDTO> findById(Long id) {
+        return userRepository.findById(id)
+                .map(userMapper::toDTO);
+    }
+
+    @Transactional
+    public UserDTO createUser(UserDTO userDTO) {
+        User user = userMapper.toEntity(userDTO);
+        
+        // Encrypt password
+        if (userDTO.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        }
+        
+        // Set default role if not provided
+        if (user.getRole() == null) {
+            user.setRole("USER");
+        }
+        
+        User savedUser = userRepository.save(user);
+        return userMapper.toDTO(savedUser);
+    }
+
+    @Transactional
+    public Optional<UserDTO> updateUser(Long id, UserDTO userDTO) {
+        return userRepository.findById(id)
+                .map(existingUser -> {
+                    // Update user fields
+                    userMapper.updateUserFromDTO(userDTO, existingUser);
+                    
+                    // Update password if provided
+                    if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
+                        existingUser.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+                    }
+                    
+                    User updatedUser = userRepository.save(existingUser);
+                    return userMapper.toDTO(updatedUser);
+                });
+    }
+
+    @Transactional
+    public boolean deleteUser(Long id) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    userRepository.delete(user);
+                    return true;
+                })
+                .orElse(false);
+    }
+}
+`
+        });
+        
+        files.push({
+          id: 'entity',
+          name: 'User.java',
+          language: 'java',
+          code: `package com.edp.usermanagement.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+
+import javax.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class User {
     
-    const query: any = {};
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     
-    // Apply filters if provided
-    if (role) {
-      query.role = role;
+    @Column(nullable = false)
+    private String name;
+    
+    @Column(nullable = false, unique = true)
+    private String email;
+    
+    @Column(nullable = false)
+    private String password;
+    
+    @Column(nullable = false)
+    private String role;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
     
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
-    
-    const users = await User.find(query)
-      .select('-password')
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort({ createdAt: -1 });
-      
-    const total = await User.countDocuments(query);
-    
-    return res.status(200).json({
-      users,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
+}
+`
+        });
+        
+        files.push({
+          id: 'repository',
+          name: 'UserRepository.java',
+          language: 'java',
+          code: `package com.edp.usermanagement.repository;
+
+import com.edp.usermanagement.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
+}
+`
+        });
       }
-    });
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Get user by ID
-router.get('/users/:id', authenticate, async (req: Request, res: Response) => {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    return res.status(200).json(user);
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Create new user with validation
-router.post('/users', validateUserInput, async (req: Request, res: Response) => {
-  try {
-    const { name, email, password, role } = req.body;
-    
-    // Check if user already exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-    
-    // Create new user with role
-    user = new User({
-      name,
-      email,
-      password,
-      role: role || 'user', // Default role if not provided
-    });
-    
-    // Hash password and save user
-    await user.save();
-    
-    // Return user without password
-    const newUser = await User.findById(user._id).select('-password');
-    
-    return res.status(201).json({ 
-      message: 'User created successfully',
-      user: newUser
-    });
-  } catch (error) {
-    console.error('Error creating user:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Added user update endpoint
-router.put('/users/:id', authenticate, authorize(['admin']), validateUserInput, async (req: Request, res: Response) => {
-  try {
-    const { name, email, role } = req.body;
-    
-    // Find and update user
-    const user = await User.findByIdAndUpdate(
-      req.params.id, 
-      { name, email, role }, 
-      { new: true }
-    ).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    return res.status(200).json({ 
-      message: 'User updated successfully',
-      user 
-    });
-  } catch (error) {
-    console.error('Error updating user:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-});
-
-export default router;`;
       
-      setGeneratedCode(newCode);
-      toast.success('Code regenerated successfully');
-      setRegenerationPrompt('');
+      setGeneratedFiles(files);
+      setActiveFileId(files[0].id);
+      toast.success('Code generated successfully');
+    }, 2000);
+  };
+
+  const handleRegenerateCode = () => {
+    if (!regenerationPrompt.trim()) {
+      toast.error('Please enter regeneration instructions');
+      return;
+    }
+    
+    toast.info('Regenerating code...');
+    
+    setTimeout(() => {
+      // Simulates updating the first file based on regeneration prompt
+      if (activeFileId && generatedFiles.length > 0) {
+        const updatedFiles = generatedFiles.map(file => {
+          if (file.id === activeFileId) {
+            let updatedCode = file.code;
+            
+            // Add a comment about the regeneration
+            if (file.language === 'typescript' || file.language === 'javascript' || file.language === 'java') {
+              updatedCode = `// Regenerated based on feedback: ${regenerationPrompt}\n\n${file.code}`;
+            } else if (file.language === 'html') {
+              updatedCode = `<!-- Regenerated based on feedback: ${regenerationPrompt} -->\n\n${file.code}`;
+            } else if (file.language === 'css') {
+              updatedCode = `/* Regenerated based on feedback: ${regenerationPrompt} */\n\n${file.code}`;
+            }
+            
+            return {
+              ...file,
+              code: updatedCode
+            };
+          }
+          return file;
+        });
+        
+        setGeneratedFiles(updatedFiles);
+        toast.success('Code regenerated successfully');
+        setRegenerationPrompt('');
+      }
     }, 2000);
   };
 
   const handleCopyCode = () => {
-    if (generatedCode) {
-      navigator.clipboard.writeText(generatedCode);
-      toast.success('Code copied to clipboard');
+    const activeFile = generatedFiles.find(file => file.id === activeFileId);
+    if (activeFile) {
+      navigator.clipboard.writeText(activeFile.code);
+      toast.success(`${activeFile.name} copied to clipboard`);
     }
   };
 
   const handleDownloadCode = () => {
-    if (generatedCode) {
-      const blob = new Blob([generatedCode], { type: 'text/plain' });
+    const activeFile = generatedFiles.find(file => file.id === activeFileId);
+    if (activeFile) {
+      const blob = new Blob([activeFile.code], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${selectedCodeType === 'frontend' ? 'frontend' : 'backend'}_code.${selectedCodeType === 'frontend' ? 'tsx' : 'ts'}`;
+      a.download = activeFile.name;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Code downloaded successfully');
+      toast.success(`${activeFile.name} downloaded successfully`);
     }
   };
 
+  const handleDownloadAllFiles = () => {
+    // In a real application this would be a zip file
+    // For this demo we'll just show a success message
+    toast.success('All files downloaded as zip');
+  };
+
   const handleSaveCode = () => {
-    if (generatedCode) {
+    if (generatedFiles.length > 0) {
       // Simulating saving code
       toast.success('Code saved successfully');
     }
@@ -531,7 +743,7 @@ export default router;`;
                   </div>
                   <div className="text-left">
                     <p className="font-medium">Backend Code</p>
-                    <p className="text-xs text-muted-foreground">Generate Node.js API and database models</p>
+                    <p className="text-xs text-muted-foreground">Generate Spring Boot API and models</p>
                   </div>
                 </div>
               </Button>
@@ -585,7 +797,7 @@ export default router;`;
             </Card>
           )}
 
-          {generatedCode && (
+          {generatedFiles.length > 0 && (
             <Card className="p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">Step 4: Generated Code</h2>
               
@@ -595,29 +807,51 @@ export default router;`;
                   <TabsTrigger value="preview">Preview</TabsTrigger>
                 </TabsList>
                 <TabsContent value="code">
-                  <div className="code-block mb-4">
-                    <pre className="text-sm">
-                      <code>{generatedCode}</code>
-                    </pre>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="copy-button" 
-                      onClick={handleCopyCode}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
+                  <div className="mb-4">
+                    <div className="flex border-b border-border overflow-x-auto py-2 mb-4">
+                      {generatedFiles.map((file) => (
+                        <button
+                          key={file.id}
+                          className={`flex items-center px-3 py-2 text-sm font-medium whitespace-nowrap ${
+                            file.id === activeFileId ? 'bg-secondary rounded-t border-b-2 border-accent' : 'text-muted-foreground'
+                          }`}
+                          onClick={() => setActiveFileId(file.id)}
+                        >
+                          <FileCode className="h-4 w-4 mr-2" />
+                          {file.name}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {activeFileId && (
+                      <div className="code-block mb-4">
+                        <pre className="text-sm max-h-96">
+                          <code>{generatedFiles.find(f => f.id === activeFileId)?.code}</code>
+                        </pre>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="copy-button" 
+                          onClick={handleCopyCode}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={handleCopyCode}>
-                      <Copy className="h-4 w-4 mr-2" /> Copy Code
+                      <Copy className="h-4 w-4 mr-2" /> Copy Current File
                     </Button>
                     <Button variant="outline" onClick={handleDownloadCode}>
-                      <Download className="h-4 w-4 mr-2" /> Download
+                      <Download className="h-4 w-4 mr-2" /> Download Current File
+                    </Button>
+                    <Button variant="outline" onClick={handleDownloadAllFiles}>
+                      <Download className="h-4 w-4 mr-2" /> Download All Files
                     </Button>
                     <Button variant="outline" onClick={handleSaveCode}>
-                      <Save className="h-4 w-4 mr-2" /> Save
+                      <Save className="h-4 w-4 mr-2" /> Save Project
                     </Button>
                   </div>
                 </TabsContent>
@@ -631,7 +865,7 @@ export default router;`;
               <div className="mt-6">
                 <h3 className="text-lg font-medium mb-3">Regenerate Code</h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Provide additional instructions to improve or modify the generated code.
+                  Provide additional instructions to improve or modify the current file.
                 </p>
                 
                 <div className="flex gap-2">

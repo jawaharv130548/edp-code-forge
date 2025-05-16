@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Code, FileCode } from 'lucide-react';
+import { Code, FileCode, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -15,7 +15,7 @@ const QuickLaunch: React.FC = () => {
         Generate and analyze code with the power of AI. Choose an option below to get started.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="border border-border hover:border-accent transition-colors cursor-pointer" onClick={() => navigate('/code-generation')}>
           <CardHeader className="pb-2">
             <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2">
@@ -56,6 +56,28 @@ const QuickLaunch: React.FC = () => {
             </ul>
             <Button className="w-full" onClick={() => navigate('/code-comparison')}>
               Launch Code Comparison
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border hover:border-accent transition-colors cursor-pointer" onClick={() => navigate('/usecase-generation')}>
+          <CardHeader className="pb-2">
+            <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+              <FileUp className="text-accent h-6 w-6" />
+            </div>
+            <CardTitle>Use Case Generation</CardTitle>
+            <CardDescription>
+              Generate use cases from existing code files
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground mb-4">
+              <li>Upload .NET code files</li>
+              <li>Extract functionalities and specifications</li>
+              <li>Generate detailed use case documentation</li>
+            </ul>
+            <Button className="w-full" onClick={() => navigate('/usecase-generation')}>
+              Launch Use Case Generation
             </Button>
           </CardContent>
         </Card>

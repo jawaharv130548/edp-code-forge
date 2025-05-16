@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Code, FileCode, Home } from 'lucide-react';
+import { Code, FileCode, Home, FileUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItemProps {
@@ -31,7 +31,7 @@ const Sidebar: React.FC = () => {
   const currentPath = location.pathname;
 
   return (
-    <div className="bg-sidebar h-[calc(100vh-64px)] w-64 p-4 border-r border-border flex flex-col">
+    <div className="bg-sidebar h-full w-64 p-4 border-r border-border flex flex-col overflow-y-auto">
       <div className="text-xs uppercase tracking-wider text-muted-foreground mb-4">Navigation</div>
       <nav className="space-y-1">
         <NavItem
@@ -51,6 +51,12 @@ const Sidebar: React.FC = () => {
           label="Code Comparison"
           icon={<FileCode className="h-5 w-5" />}
           active={currentPath === '/code-comparison'}
+        />
+        <NavItem
+          to="/usecase-generation"
+          label="Use Case Generation"
+          icon={<FileUp className="h-5 w-5" />}
+          active={currentPath === '/usecase-generation'}
         />
       </nav>
       <div className="mt-auto text-xs text-muted-foreground">
