@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,11 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Upload, RefreshCw, Code, Copy, Download, Save, FileCode } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Interface for generated file
+// Update the language type to include 'javascript' as a valid option
 interface GeneratedFile {
   id: string;
   name: string;
-  language: 'typescript' | 'html' | 'css' | 'java' | 'xml';
+  language: 'typescript' | 'javascript' | 'html' | 'css' | 'java' | 'xml';
   code: string;
 }
 
@@ -599,8 +598,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
           if (file.id === activeFileId) {
             let updatedCode = file.code;
             
-            // Add a comment about the regeneration
-            if (file.language === 'typescript' || file.language === 'javascript' || file.language === 'java') {
+            // Fix the comparison to check for valid language types
+            if (['typescript', 'javascript', 'java'].includes(file.language)) {
               updatedCode = `// Regenerated based on feedback: ${regenerationPrompt}\n\n${file.code}`;
             } else if (file.language === 'html') {
               updatedCode = `<!-- Regenerated based on feedback: ${regenerationPrompt} -->\n\n${file.code}`;
