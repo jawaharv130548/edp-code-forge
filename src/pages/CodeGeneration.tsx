@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,9 +7,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, RefreshCw, Code, Copy, Download, Save, FileCode } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Form, FormField, FormItem, FormControl, FormDescription } from '@/components/ui/form';
+import * as mammoth from 'mammoth';
+
+const code_gen_id = '42E9D159A1B9235DDDB2A986';
+const code_gen_apikey = '42E9D159A1B9235DDDB2A986:b72aa896208411f6b61070c45e977a31';
+const code_gen_url = '/api/agent/EDP-Code-Gen-new/execute';
+const SUMMARISE_USER_ID = "A018F9B1F7CC5F379B85BDF4";
+const SUMMARISE_API_KEY = "A018F9B1F7CC5F379B85BDF4:8496928c4cae352f20afefd4213a761c";
+const SUMMARIZE_API_URL = "/api/agent/summarize/execute";
 
 // Define types
 interface GeneratedFile {
@@ -26,12 +30,26 @@ interface InputOption {
   value: string;
 }
 
+type ExpectedResponse = {
+  output: {
+    content: string;
+  }
+}
+
+type errorResponse = {
+  detail: {
+    error: string,
+    requestId: string // UUID
+  }
+}
+
 // Frontend component type options
 const frontendComponentTypes: InputOption[] = [
   { label: 'HTML', value: 'html' },
   { label: 'Form Component', value: 'form' },
   { label: 'Service Component', value: 'service' },
-  { label: 'Routing Component', value: 'routing' }
+  { label: 'Routing Component', value: 'routing' },
+  { label: 'All', value: 'all' }
 ];
 
 // Backend component type options
@@ -40,12 +58,15 @@ const backendComponentTypes: InputOption[] = [
   { label: 'Controller', value: 'controller' },
   { label: 'Service', value: 'service' },
   { label: 'Repository', value: 'repository' },
-  { label: 'Spring Configuration', value: 'config' }
+  { label: 'Spring Configuration', value: 'config' },
+  { label: 'Junits', value: 'junit' },
+  { label: 'All', value: 'all' }
 ];
 
 const CodeGeneration: React.FC = () => {
   // Input source state
   const [inputSource, setInputSource] = useState<'upload' | 'index'>('upload');
+  const [summarization_prompt, setSummarizationPrompt] = useState('');
   const [useCase, setUseCase] = useState('');
   const [isFileUploaded, setIsFileUploaded] = useState(false);
   const [isSummarized, setIsSummarized] = useState(false);
@@ -53,7 +74,7 @@ const CodeGeneration: React.FC = () => {
   // Code type and component selection states
   const [selectedCodeType, setSelectedCodeType] = useState<'frontend' | 'backend' | null>(null);
   const [selectedComponentType, setSelectedComponentType] = useState<string | null>(null);
-  
+
   // Prompt and generation states
   const [isEditingPrompt, setIsEditingPrompt] = useState(false);
   const [promptText, setPromptText] = useState('');
@@ -82,41 +103,177 @@ const CodeGeneration: React.FC = () => {
     if (selectedCodeType === 'frontend') {
       switch (selectedComponentType) {
         case 'html':
-          return "Generate Angular HTML code based on the specified use case.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed html, scss files and generate html and scss code based on that. Always reuse existing html, scss and form base components. " +
+            Make sure to follow below mentioned rules:
+            1. Never generate a new validation pattern.
+            2. Use the exact same validation annotations and field constraints found in the retrieved html code.
+            3. Do not infer or invent validations.
+            4. Don't write business logic that duplicates existing code.
+            5. Refer to the indexed validation_sheet file for the validations.
+            Making sure of the above rules, create a frontend html code.`;
         case 'form':
-          return "Generate Angular Form Component with TypeScript and HTML based on the specified use case. Include form validations and handle submissions.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed typescript,javacript files and generate code based on that. " +
+            Make sure to follow the below mentioned rules:
+            1. Do not create any new components if a relevant one is already retrieved.
+            2. Always reuse existing components, models, services and form base components.
+            3. Extend them or invoke their methods only if needed.
+            4. Never generate a new validation pattern.
+            5. Use the exact same validation annotations and field constraints found in the retrieved typescript(CustomValidator) code.
+            6. Do not infer or invent validations.
+            7. Use service components to call the APIs.
+            8. Don't write business logic that duplicates existing code.
+            9. Try creating base component for the use case and extend formbase component and use those method in the created component for business logics.
+            10. Use the same DTOs and request/response patterns.
+            11. Make sure that the roles are added.
+            12. Add validations to the form controls according to the use case.
+            13. Refer to the indexed validation_sheet file for the form validations.
+            Making sure of the above rules, create a frontend typescript.`;
         case 'service':
-          return "Generate Angular Service Component with TypeScript for API interactions based on the specified use case.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed typescript,javacript,json files and generate code based on that." +
+            Make sure to follow the below mentioned rules:
+            1. Do not create any new services if a relevant one is already retrieved.
+            2. Always reuse existing services,components, models and form base components.
+            3. Extend them or invoke their methods only if needed.
+            4. In service components, invoke rest api call methods or helper methods from the retrieved code.
+            5. Don't write business logic that duplicates existing code.
+            6. Use the same DTOs and request/response patterns.
+            Making sure of the above rules, create a frontend angular service code.`;
         case 'routing':
-          return "Generate Angular Routing Component with TypeScript based on the specified use case. Include route configurations and guards if needed.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed typescript,javacript files and generate code based on that.\n" +
+            Make sure to follow the below mentioned rules:
+            1. Do not create any new components if a relevant one is already retrieved.
+            2. Always reuse existing components, models, services,html, scss and form base components.
+            3. Extend them or invoke their methods only if needed.
+            4. Don't write business logic that duplicates existing code.
+            5. Make sure that the routing is correct and roles are added.
+            Making sure of the above rules, create a frontend angular routing code.`;
         default:
-          return "Generate Angular TypeScript code based on the specified use case.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed html, typescript, javacript, scss, json files and generate code based on that.
+            Make sure to follow the below mentioned rules:
+            1. Do not create any new components if a relevant one is already retrieved.
+            2. Compare the C# code found in mdc_code_data index and generate the angular logic based on that.
+            3. Always reuse existing components, models, services, html, scss and form base components.
+            4. Extend them or invoke their methods only if needed.
+            5. Never generate a new validation pattern.
+            6. Use the exact same validation annotations and field constraints found in the retrieved typescript(CustomValidator) code.
+            7. Do not infer or invent validations.
+            8. In service components, invoke rest api call methods or helper methods from the retrieved code.
+            9. Don't write business logic that duplicates existing code.
+            10. Try creating base component for the use case and extend formbase component and use those method in the created component for business logics.
+            11. Use the same DTOs and request/response patterns.
+            12. Make sure that the routing is correct and roles are added.
+            13. Add validations to the form controls according to the use case.
+            Making sure of the above rules, create a frontend angular module.`;
       }
     } else {
       switch (selectedComponentType) {
         case 'entity':
-          return "Generate Spring Boot Java Entity class based on the specified use case. Include JPA annotations and relationships.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed java files and generate code based on that. Make sure to follow the below mentioned rules: -
+            1. Do not create any new entity class if a relevant one is already retrieved.
+            2. Always reuse existing entities, domain objects, and abstract classes. Extend them or invoke their methods only if needed.
+            3. Never generate a new validation pattern. Use the exact same validation annotations and field constraints found in the retrieved entity code. Do not infer or invent validations. Refer to the indexed validation_sheet file for the length, pattern , allowed characters validations.
+            4. Don't write business logic that duplicates existing code.
+            5. Use the database design indexed sheet for columns names,table name, validations and database design.
+            6. Make sure to use perspectives like @Read @Write to all the columns.
+            Making sure of the above rules, create a backend spring boot entity class using java.`;
         case 'controller':
-          return "Generate Spring Boot REST Controller class based on the specified use case. Include CRUD endpoints and exception handling.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed java files and generate code based on that. Make sure to follow the below mentioned rules: -
+            1. Do not create any new entity class if a relevant one is already retrieved. Always reuse existing entities, domain objects, and abstract classes. Extend them or invoke their methods only if needed.
+            2. Never generate a new validation pattern.
+            3. Use the exact same validation annotations and field constraints found in the retrieved entity code. Do not infer or invent validations.
+            4. Don't write business logic that duplicates existing code.
+            5. Controllers must always use POST mappings.
+            6. Never introduce logic in the controller — call domain/service methods as done in the retrieved code.
+            7. Use the same DTOs and request/response patterns.
+            8. Add bean validations as per the indexed file.
+            9. Use Rest Naming conventions to the endpoint.
+            Making sure of the above rules, create a backend spring boot controller using java.`;
         case 'service':
-          return "Generate Spring Boot Service class based on the specified use case. Include business logic and transaction management.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed java files and generate code based on that. Make sure to follow the below mentioned rules: -
+            1. Do not create any new entity class if a relevant one is already retrieved.
+            2. Always reuse existing entities, domain objects, and abstract classes.
+            3. Extend them or invoke their methods only if needed.
+            4. In service classes, invoke domain methods or helper classes from the retrieved code.
+            5. Don't write business logic that duplicates existing code.
+            6. Use the same DTOs and request/response patterns.
+            7. Add bean validations as per the indexed file.
+            Making sure of the above rules, create a backend spring boot service using java`;
         case 'repository':
-          return "Generate Spring Boot Repository interface based on the specified use case. Include custom query methods.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed java files and generate code based on that. Make sure to follow the below mentioned rules: -
+            1. Always reuse existing entities, domain objects, and abstract classes.
+            2. Extend them or invoke their methods only if needed.
+            3. For repositories, use the same inheritance and method naming style.
+            4. Do not define new repository interfaces unless there is absolutely no reusable one.
+            5. Don't write business logic that duplicates existing code.
+            6. Use the same DTOs and request/response patterns.
+            Making sure of the above rules, create a backend spring boot repository using java`;
         case 'config':
-          return "Generate Spring Boot Configuration class based on the specified use case. Include bean definitions and property configurations.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed java files and generate code based on that. Make sure to follow the below mentioned rules: -
+            1. Make sure to follow the process flow in the above use case if mentioned.
+            2. Make sure to create enums for current state and target state
+            3. Final action would be to send email, so also create an ftl file for email generation according to the body mentioned in the above use case
+            Making sure of the above rules, create a backend spring boot configuration using java`;
+        case 'junit':
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Generate Junits classes for controller, entity, dtos according to the use case. Go through all the indexed files and generate parameterized test cases according to it. Refer to mockito_junit_classes.txt index for reference. Make sure to follow the below mentioned rules: -
+            1. Add positive, negative and boundary scenarios for all the cases considered.
+            2. Do not miss even a single line in writing the junits.
+            3. All the lines from controller, entity, service, dto, repo should be covered.
+            4. If there are bean validations present in the entity class, write bean validations tests.
+            5. These bean validation tests should be covered in controlelr and entity test classes.
+            Making sure of the above rules, create a backend spring boot test classes using java.`;
         default:
-          return "Generate Spring Boot Java code based on the specified use case.";
+          return summarization_prompt + '\n\n------------------\n' + `You have a new use case above. Go through all the indexed java files and generate code based on that. Follow the below rules for generation: -
+            1. Refer to the currently indexed java files for structure and how the application flow is.
+            2. Compare the C# code found in mdc_code_data index and generate the java logic based on that.
+            3. Do not create any new entity class if a relevant one is already retrieved. Always reuse existing entities, domain objects, and abstract classes. Extend them or invoke their methods only if needed.
+            4. Never generate a new validation pattern. Use the exact same validation annotations and field constraints found in the retrieved entity code. You can refer to validations sheet which is indexed for Pac Change attributes.
+            5. For repositories, use the same inheritance and method naming style. Do not define new repository interfaces unless there is absolutely no reusable one.
+            6. In service classes, invoke domain methods or helper classes from the retrieved code. Don’t write business logic that duplicates existing code.
+            7. Controllers must always use POST mappings. Never introduce logic in the controller — call domain/service methods as done in the retrieved code.
+            8. Use the same DTOs and request/response patterns.Add bean validations as per the indexed file.
+            Making sure of the above rules, create a backend spring boot module using java.`;
       }
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      // Simulating file upload
+  const readFileAndSetPrompt = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    const prompt = result.value.trim();
+    setSummarizationPrompt(prompt);
+    return prompt;
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
       toast.success('File uploaded successfully');
+      const prompt = await readFileAndSetPrompt(file);
       setIsFileUploaded(true);
-      
-      // Simulate AI summarization delay
+
+      // Now use the prompt directly
+      const response = await fetch(SUMMARIZE_API_URL, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-user-id': SUMMARISE_USER_ID,
+          'x-authentication': 'api-key ' + SUMMARISE_API_KEY,
+        },
+        body: JSON.stringify({
+          "input": {
+            "query": prompt + '\n\n------------------\n' + 'Reformat the above use case in such a way that I can use it as a prompt to the RAG model. MAKE SURE THAT YOU DONT MISS ANY DETAILS. NOT EVEN A SINGLE THING SHOULD BE MISSED.'
+          }
+        }),
+      });
+
+      const parsedResponse = await response.json() as ExpectedResponse | errorResponse;
+
+      if ('output' in parsedResponse) {
+        setSummarizationPrompt(parsedResponse.output.content);
+      } else {
+        throw new Error(parsedResponse.detail?.error || 'Unknown error');
+      }
+
       setTimeout(() => {
         toast.success('Content summarized successfully');
         setIsSummarized(true);
@@ -134,6 +291,30 @@ const CodeGeneration: React.FC = () => {
     setPromptText(getDefaultPrompt());
   };
 
+  const generateCode = async (): Promise<ExpectedResponse> => {
+    const response = await fetch(code_gen_url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-user-id': code_gen_id,
+        'x-authentication': 'api-key ' + code_gen_apikey,
+      },
+      body: JSON.stringify({
+        "input": {
+          "query": promptText
+        }
+      }),
+    });
+
+    const parsedResponse = await response.json() as ExpectedResponse | errorResponse;
+
+    if ('output' in parsedResponse) {
+      return parsedResponse as ExpectedResponse;
+    } else {
+      throw new Error(parsedResponse.detail?.error || 'Unknown error');
+    }
+  }
+
   const handleGenerateCode = () => {
     if (!selectedCodeType || !selectedComponentType) {
       toast.error('Please select component type');
@@ -142,815 +323,100 @@ const CodeGeneration: React.FC = () => {
 
     // Simulate code generation
     toast.info('Generating code...');
-    
-    setTimeout(() => {
+
+    setTimeout(async () => {
       const files: GeneratedFile[] = [];
-      
+
       if (selectedCodeType === 'frontend') {
         if (selectedComponentType === 'html') {
           files.push({
-            id: 'user-list-html',
-            name: 'user-list.component.html',
+            id: 'html_file',
+            name: 'html_file',
             language: 'html',
-            code: `<div class="user-list-container">
-  <h2>User Management</h2>
-  
-  <div class="search-bar">
-    <input 
-      type="text" 
-      placeholder="Search users..."
-      [(ngModel)]="searchTerm"
-      (input)="filterUsers()"
-    />
-  </div>
-  
-  <table class="user-table" *ngIf="filteredUsers.length > 0">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Role</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let user of filteredUsers">
-        <td>{{ user.name }}</td>
-        <td>{{ user.email }}</td>
-        <td>{{ user.role }}</td>
-        <td>
-          <button class="btn btn-edit" (click)="editUser(user)">Edit</button>
-          <button class="btn btn-delete" (click)="deleteUser(user.id)">Delete</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  
-  <div class="no-results" *ngIf="filteredUsers.length === 0">
-    No users found matching your search.
-  </div>
-</div>`
+            code: (await generateCode()).output.content
           });
         } else if (selectedComponentType === 'form') {
           files.push({
-            id: 'user-form-ts',
-            name: 'user-form.component.ts',
+            id: 'ts_file',
+            name: 'ts_file',
             language: 'typescript',
-            code: `import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { UserService } from '../services/user.service';
-import { User } from '../models/user.model';
-import { ActivatedRoute, Router } from '@angular/router';
-
-@Component({
-  selector: 'app-user-form',
-  templateUrl: './user-form.component.html',
-  styleUrls: ['./user-form.component.css']
-})
-export class UserFormComponent implements OnInit {
-  userForm: FormGroup;
-  isEditMode = false;
-  userId: number | null = null;
-  submitted = false;
-  
-  constructor(
-    private fb: FormBuilder,
-    private userService: UserService,
-    private route: ActivatedRoute,
-    private router: Router
-  ) {
-    this.userForm = this.createForm();
-  }
-  
-  ngOnInit(): void {
-    this.route.params.subscribe(params => {
-      if (params['id']) {
-        this.isEditMode = true;
-        this.userId = +params['id'];
-        this.loadUserData();
-      }
-    });
-  }
-  
-  createForm(): FormGroup {
-    return this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(3)]],
-      email: ['', [Validators.required, Validators.email]],
-      role: ['USER', Validators.required],
-      password: ['', this.isEditMode ? [] : [Validators.required, Validators.minLength(6)]]
-    });
-  }
-  
-  loadUserData(): void {
-    if (this.userId) {
-      this.userService.getUserById(this.userId).subscribe({
-        next: (user) => {
-          // Remove password from the form in edit mode
-          const { password, ...userWithoutPassword } = user;
-          this.userForm.patchValue(userWithoutPassword);
-        },
-        error: (error) => {
-          console.error('Error loading user data', error);
-        }
-      });
-    }
-  }
-  
-  onSubmit(): void {
-    this.submitted = true;
-    
-    if (this.userForm.invalid) {
-      return;
-    }
-    
-    const userData = this.userForm.value;
-    
-    if (this.isEditMode && this.userId) {
-      this.userService.updateUser(this.userId, userData).subscribe({
-        next: () => {
-          this.router.navigate(['/users']);
-        },
-        error: (error) => {
-          console.error('Error updating user', error);
-        }
-      });
-    } else {
-      this.userService.createUser(userData).subscribe({
-        next: () => {
-          this.router.navigate(['/users']);
-        },
-        error: (error) => {
-          console.error('Error creating user', error);
-        }
-      });
-    }
-  }
-  
-  get f() {
-    return this.userForm.controls;
-  }
-}`
-          });
-          
-          files.push({
-            id: 'user-form-html',
-            name: 'user-form.component.html',
-            language: 'html',
-            code: `<div class="user-form-container">
-  <h2>{{ isEditMode ? 'Edit User' : 'Create User' }}</h2>
-  
-  <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
-    <div class="form-group">
-      <label for="name">Name</label>
-      <input 
-        type="text" 
-        id="name" 
-        formControlName="name" 
-        [ngClass]="{ 'is-invalid': submitted && f['name'].errors }"
-      />
-      <div *ngIf="submitted && f['name'].errors" class="error-message">
-        <span *ngIf="f['name'].errors['required']">Name is required</span>
-        <span *ngIf="f['name'].errors['minlength']">Name must be at least 3 characters</span>
-      </div>
-    </div>
-    
-    <div class="form-group">
-      <label for="email">Email</label>
-      <input 
-        type="email" 
-        id="email" 
-        formControlName="email" 
-        [ngClass]="{ 'is-invalid': submitted && f['email'].errors }"
-      />
-      <div *ngIf="submitted && f['email'].errors" class="error-message">
-        <span *ngIf="f['email'].errors['required']">Email is required</span>
-        <span *ngIf="f['email'].errors['email']">Email is invalid</span>
-      </div>
-    </div>
-    
-    <div class="form-group">
-      <label for="role">Role</label>
-      <select 
-        id="role" 
-        formControlName="role"
-        [ngClass]="{ 'is-invalid': submitted && f['role'].errors }"
-      >
-        <option value="USER">User</option>
-        <option value="ADMIN">Admin</option>
-        <option value="MANAGER">Manager</option>
-      </select>
-      <div *ngIf="submitted && f['role'].errors" class="error-message">
-        <span *ngIf="f['role'].errors['required']">Role is required</span>
-      </div>
-    </div>
-    
-    <div class="form-group" *ngIf="!isEditMode">
-      <label for="password">Password</label>
-      <input 
-        type="password" 
-        id="password" 
-        formControlName="password" 
-        [ngClass]="{ 'is-invalid': submitted && f['password'].errors }"
-      />
-      <div *ngIf="submitted && f['password'].errors" class="error-message">
-        <span *ngIf="f['password'].errors['required']">Password is required</span>
-        <span *ngIf="f['password'].errors['minlength']">Password must be at least 6 characters</span>
-      </div>
-    </div>
-    
-    <div class="button-group">
-      <button type="submit" class="btn btn-primary">Save</button>
-      <button type="button" class="btn btn-secondary" routerLink="/users">Cancel</button>
-    </div>
-  </form>
-</div>`
+            code: (await generateCode()).output.content
           });
         } else if (selectedComponentType === 'service') {
           files.push({
-            id: 'user-service',
-            name: 'user.service.ts',
+            id: 'service_file',
+            name: 'service_file',
             language: 'typescript',
-            code: `import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
-import { User } from '../models/user.model';
-import { Page } from '../models/page.model';
-import { ErrorHandlingService } from './error-handling.service';
-
-@Injectable({
-  providedIn: 'root'
-})
-export class UserService {
-  private apiUrl = '/api/users';
-  
-  constructor(
-    private http: HttpClient,
-    private errorHandlingService: ErrorHandlingService
-  ) {}
-  
-  /**
-   * Get all users with pagination and optional filtering
-   */
-  getUsers(page = 0, size = 10, role?: string, search?: string): Observable<Page<User>> {
-    let params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString());
-    
-    if (role) {
-      params = params.set('role', role);
-    }
-    
-    if (search) {
-      params = params.set('search', search);
-    }
-    
-    return this.http.get<Page<User>>(this.apiUrl, { params })
-      .pipe(catchError(this.errorHandlingService.handleError));
-  }
-  
-  /**
-   * Get a user by ID
-   */
-  getUserById(id: number): Observable<User> {
-    return this.http.get<User>(\`\${this.apiUrl}/\${id}\`)
-      .pipe(catchError(this.errorHandlingService.handleError));
-  }
-  
-  /**
-   * Create a new user
-   */
-  createUser(user: User): Observable<User> {
-    return this.http.post<User>(this.apiUrl, user)
-      .pipe(catchError(this.errorHandlingService.handleError));
-  }
-  
-  /**
-   * Update an existing user
-   */
-  updateUser(id: number, user: User): Observable<User> {
-    return this.http.put<User>(\`\${this.apiUrl}/\${id}\`, user)
-      .pipe(catchError(this.errorHandlingService.handleError));
-  }
-  
-  /**
-   * Delete a user by ID
-   */
-  deleteUser(id: number): Observable<void> {
-    return this.http.delete<void>(\`\${this.apiUrl}/\${id}\`)
-      .pipe(catchError(this.errorHandlingService.handleError));
-  }
-  
-  /**
-   * Get user profile (current authenticated user)
-   */
-  getCurrentUserProfile(): Observable<User> {
-    return this.http.get<User>(\`\${this.apiUrl}/profile\`)
-      .pipe(catchError(this.errorHandlingService.handleError));
-  }
-}`
-          });
-          
-          files.push({
-            id: 'user-model',
-            name: 'user.model.ts',
-            language: 'typescript',
-            code: `export interface User {
-  id?: number;
-  name: string;
-  email: string;
-  role: string;
-  password?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface Page<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
-}`
+            code: (await generateCode()).output.content
           });
         } else if (selectedComponentType === 'routing') {
           files.push({
-            id: 'user-routing',
-            name: 'user-routing.module.ts',
+            id: 'routing_file',
+            name: 'routing_file',
             language: 'typescript',
-            code: `import { NgModule } from '@angular/core';
-import { Routes, RouterModule } from '@angular/router';
-import { UserListComponent } from './user-list/user-list.component';
-import { UserFormComponent } from './user-form/user-form.component';
-import { UserDetailComponent } from './user-detail/user-detail.component';
-import { AuthGuard } from '../core/guards/auth.guard';
-import { RoleGuard } from '../core/guards/role.guard';
-
-const routes: Routes = [
-  {
-    path: 'users',
-    component: UserListComponent,
-    canActivate: [AuthGuard],
-    data: { title: 'User Management' }
-  },
-  {
-    path: 'users/new',
-    component: UserFormComponent,
-    canActivate: [AuthGuard, RoleGuard],
-    data: { 
-      title: 'Create User',
-      roles: ['ADMIN', 'MANAGER'] 
-    }
-  },
-  {
-    path: 'users/:id',
-    component: UserDetailComponent,
-    canActivate: [AuthGuard],
-    data: { title: 'User Details' }
-  },
-  {
-    path: 'users/:id/edit',
-    component: UserFormComponent,
-    canActivate: [AuthGuard, RoleGuard],
-    data: { 
-      title: 'Edit User',
-      roles: ['ADMIN', 'MANAGER'] 
-    }
-  }
-];
-
-@NgModule({
-  imports: [RouterModule.forChild(routes)],
-  exports: [RouterModule]
-})
-export class UserRoutingModule { }
-
-@NgModule({
-  imports: [UserRoutingModule],
-  declarations: []
-})
-export class UserModule { }`
+            code: (await generateCode()).output.content
+          });
+        } else if (selectedComponentType === 'all') {
+          files.push({
+            id: 'all_file',
+            name: 'all_file',
+            language: 'typescript',
+            code: (await generateCode()).output.content
           });
         }
       } else if (selectedCodeType === 'backend') {
         if (selectedComponentType === 'entity') {
           files.push({
-            id: 'user-entity',
-            name: 'User.java',
+            id: 'entity_file',
+            name: 'entity_file',
             language: 'java',
-            code: `package com.edp.usermanagement.model;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.Builder;
-
-import javax.persistence.*;
-import java.time.LocalDateTime;
-
-@Entity
-@Table(name = "users")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class User {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(nullable = false)
-    private String name;
-    
-    @Column(nullable = false, unique = true)
-    private String email;
-    
-    @Column(nullable = false)
-    private String password;
-    
-    @Column(nullable = false)
-    private String role;
-    
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-    
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-    
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-}`
+            code: (await generateCode()).output.content
           });
         } else if (selectedComponentType === 'controller') {
           files.push({
-            id: 'user-controller',
-            name: 'UserController.java',
+            id: 'controller_file',
+            name: 'controller_file',
             language: 'java',
-            code: `package com.edp.usermanagement.controller;
-
-import com.edp.usermanagement.model.User;
-import com.edp.usermanagement.service.UserService;
-import com.edp.usermanagement.dto.UserDTO;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import javax.validation.Valid;
-import java.util.Optional;
-
-@RestController
-@RequestMapping("/api/users")
-public class UserController {
-
-    private final UserService userService;
-
-    @Autowired
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
-
-    @GetMapping
-    public ResponseEntity<Page<UserDTO>> getAllUsers(
-            @RequestParam(required = false) String role,
-            @RequestParam(required = false) String search,
-            Pageable pageable) {
-        
-        Page<UserDTO> users = userService.findUsers(role, search, pageable);
-        return ResponseEntity.ok(users);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
-        return userService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping
-    public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserDTO userDTO) {
-        UserDTO createdUser = userService.createUser(userDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(
-            @PathVariable Long id,
-            @Valid @RequestBody UserDTO userDTO) {
-        
-        return userService.updateUser(id, userDTO)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        if (userService.deleteUser(id)) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
-    }
-    
-    @GetMapping("/profile")
-    public ResponseEntity<UserDTO> getCurrentUserProfile() {
-        UserDTO currentUser = userService.getCurrentUserProfile();
-        return ResponseEntity.ok(currentUser);
-    }
-}`
+            code: (await generateCode()).output.content
           });
         } else if (selectedComponentType === 'service') {
           files.push({
-            id: 'user-service',
-            name: 'UserService.java',
+            id: 'service_file',
+            name: 'service_file',
             language: 'java',
-            code: `package com.edp.usermanagement.service;
-
-import com.edp.usermanagement.model.User;
-import com.edp.usermanagement.repository.UserRepository;
-import com.edp.usermanagement.dto.UserDTO;
-import com.edp.usermanagement.mapper.UserMapper;
-import com.edp.usermanagement.exception.ResourceNotFoundException;
-import com.edp.usermanagement.security.SecurityUtils;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
-
-@Service
-public class UserService {
-
-    private final UserRepository userRepository;
-    private final UserMapper userMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final SecurityUtils securityUtils;
-
-    @Autowired
-    public UserService(
-        UserRepository userRepository, 
-        UserMapper userMapper, 
-        PasswordEncoder passwordEncoder,
-        SecurityUtils securityUtils
-    ) {
-        this.userRepository = userRepository;
-        this.userMapper = userMapper;
-        this.passwordEncoder = passwordEncoder;
-        this.securityUtils = securityUtils;
-    }
-
-    public Page<UserDTO> findUsers(String role, String search, Pageable pageable) {
-        Specification<User> spec = Specification.where(null);
-        
-        if (role != null && !role.isEmpty()) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("role"), role));
-        }
-        
-        if (search != null && !search.isEmpty()) {
-            spec = spec.and((root, query, cb) -> cb.or(
-                cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase() + "%"),
-                cb.like(cb.lower(root.get("email")), "%" + search.toLowerCase() + "%")
-            ));
-        }
-        
-        return userRepository.findAll(spec, pageable)
-            .map(userMapper::toDTO);
-    }
-
-    public Optional<UserDTO> findById(Long id) {
-        return userRepository.findById(id)
-                .map(userMapper::toDTO);
-    }
-
-    @Transactional
-    public UserDTO createUser(UserDTO userDTO) {
-        User user = userMapper.toEntity(userDTO);
-        
-        // Encrypt password
-        if (userDTO.getPassword() != null) {
-            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        }
-        
-        // Set default role if not provided
-        if (user.getRole() == null) {
-            user.setRole("USER");
-        }
-        
-        User savedUser = userRepository.save(user);
-        return userMapper.toDTO(savedUser);
-    }
-
-    @Transactional
-    public Optional<UserDTO> updateUser(Long id, UserDTO userDTO) {
-        return userRepository.findById(id)
-                .map(existingUser -> {
-                    // Update user fields
-                    userMapper.updateUserFromDTO(userDTO, existingUser);
-                    
-                    // Update password if provided
-                    if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
-                        existingUser.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-                    }
-                    
-                    User updatedUser = userRepository.save(existingUser);
-                    return userMapper.toDTO(updatedUser);
-                });
-    }
-
-    @Transactional
-    public boolean deleteUser(Long id) {
-        return userRepository.findById(id)
-                .map(user -> {
-                    userRepository.delete(user);
-                    return true;
-                })
-                .orElse(false);
-    }
-    
-    @Transactional(readOnly = true)
-    public UserDTO getCurrentUserProfile() {
-        String currentUsername = securityUtils.getCurrentUserLogin()
-            .orElseThrow(() -> new RuntimeException("Current user not found"));
-            
-        User user = userRepository.findByEmail(currentUsername)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-            
-        return userMapper.toDTO(user);
-    }
-}`
+            code: (await generateCode()).output.content
           });
         } else if (selectedComponentType === 'repository') {
           files.push({
-            id: 'user-repository',
-            name: 'UserRepository.java',
+            id: 'repository_file',
+            name: 'repository_file',
             language: 'java',
-            code: `package com.edp.usermanagement.repository;
-
-import com.edp.usermanagement.model.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
-
-@Repository
-public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
-    
-    /**
-     * Find a user by email
-     * 
-     * @param email the email to search for
-     * @return the user with the given email
-     */
-    Optional<User> findByEmail(String email);
-    
-    /**
-     * Check if a user with the given email exists
-     * 
-     * @param email the email to check
-     * @return true if a user with the email exists
-     */
-    boolean existsByEmail(String email);
-    
-    /**
-     * Find users by role
-     * 
-     * @param role the role to search for
-     * @return list of users with the given role
-     */
-    List<User> findByRole(String role);
-    
-    /**
-     * Find users with a name containing the given string (case insensitive)
-     * 
-     * @param name the name pattern to search for
-     * @return list of users with matching names
-     */
-    @Query("SELECT u FROM User u WHERE LOWER(u.name) LIKE LOWER(CONCAT('%', :name, '%'))")
-    List<User> findByNameContainingIgnoreCase(@Param("name") String name);
-    
-    /**
-     * Count users by role
-     * 
-     * @param role the role to count
-     * @return number of users with the given role
-     */
-    long countByRole(String role);
-}`
+            code: (await generateCode()).output.content
           });
         } else if (selectedComponentType === 'config') {
           files.push({
-            id: 'spring-config',
-            name: 'SecurityConfig.java',
+            id: 'config_file',
+            name: 'config_file',
             language: 'java',
-            code: `package com.edp.usermanagement.config;
-
-import com.edp.usermanagement.security.JwtAuthenticationFilter;
-import com.edp.usermanagement.security.JwtAuthorizationFilter;
-import com.edp.usermanagement.security.UserDetailsServiceImpl;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.Arrays;
-
-@Configuration
-@EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
-
-    @Autowired
-    private UserDetailsServiceImpl userDetailsService;
-    
-    @Autowired
-    private JwtAuthorizationFilter jwtAuthorizationFilter;
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
-    }
-
-    @Bean
-    @Override
-    public AuthenticationManager authenticationManagerBean() throws Exception {
-        return super.authenticationManagerBean();
-    }
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        http
-            .cors().and()
-            .csrf().disable()
-            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            .and()
-            .authorizeRequests()
-                .antMatchers("/api/auth/**").permitAll()
-                .antMatchers(HttpMethod.GET, "/api/users").hasAnyRole("ADMIN", "MANAGER")
-                .antMatchers(HttpMethod.POST, "/api/users").hasRole("ADMIN")
-                .antMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
-                .antMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
-                .antMatchers("/api/users/profile").authenticated()
-                .anyRequest().authenticated()
-            .and()
-            .addFilterBefore(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
-    }
-
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        
-        return source;
-    }
-}`
+            code: (await generateCode()).output.content
+          });
+        } else if (selectedComponentType === 'junit') {
+          files.push({
+            id: 'junit_file',
+            name: 'junit_file',
+            language: 'java',
+            code: (await generateCode()).output.content
+          });
+        } else if (selectedComponentType === 'all') {
+          files.push({
+            id: 'all_file',
+            name: 'all_file',
+            language: 'java',
+            code: (await generateCode()).output.content
           });
         }
       }
-      
+
       if (files.length > 0) {
         setGeneratedFiles(files);
         setActiveFileId(files[0].id);
@@ -966,14 +432,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
       toast.error('Please enter both filename and regeneration instructions');
       return;
     }
-    
     toast.info('Regenerating code...');
-    
     setTimeout(() => {
       const updatedFiles = generatedFiles.map(file => {
         if (file.name === regenerateFileName) {
           let updatedCode = file.code;
-          
           // Check language type
           if (['typescript', 'javascript', 'java'].includes(file.language)) {
             updatedCode = `// Regenerated based on feedback: ${regenerationPrompt}\n\n${file.code}`;
@@ -984,7 +447,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
           } else if (file.language === 'xml') {
             updatedCode = `<!-- Regenerated based on feedback: ${regenerationPrompt} -->\n\n${file.code}`;
           }
-          
           return {
             ...file,
             code: updatedCode
@@ -992,7 +454,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         }
         return file;
       });
-      
       setGeneratedFiles(updatedFiles);
       toast.success('Code regenerated successfully');
       setRegenerationPrompt('');
@@ -1043,10 +504,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
       <Card className="p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Step 1: Input Source</h2>
-        
+
         <div className="mb-4 flex items-center gap-2">
-          <RadioGroup 
-            value={inputSource} 
+          <RadioGroup
+            value={inputSource}
             onValueChange={(value) => setInputSource(value as 'upload' | 'index')}
             className="flex flex-col space-y-2"
           >
@@ -1064,7 +525,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         {inputSource === 'index' ? (
           <div className="mb-4">
             <Label htmlFor="useCase" className="mb-2 block">Specify Use Case</Label>
-            <Textarea 
+            <Textarea
               id="useCase"
               placeholder="Describe the use case you want to generate code for..."
               value={useCase}
@@ -1074,11 +535,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
           </div>
         ) : (
           <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
-            <input 
-              type="file" 
-              id="file-upload" 
-              className="hidden" 
-              onChange={handleFileUpload} 
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              onChange={handleFileUpload}
               accept=".txt,.md,.doc,.docx"
             />
             <label htmlFor="file-upload" className="cursor-pointer">
@@ -1134,24 +595,24 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
           {selectedCodeType && (
             <Card className="p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">Step 3: Select Component Type</h2>
-              
+
               <div className="mb-4">
                 <Label htmlFor="componentType" className="mb-2 block">Component Type</Label>
-                <Select 
-                  value={selectedComponentType || ''} 
+                <Select
+                  value={selectedComponentType || ''}
                   onValueChange={handleComponentTypeSelect}
                 >
                   <SelectTrigger id="componentType">
                     <SelectValue placeholder="Select component type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedCodeType === 'frontend' 
+                    {selectedCodeType === 'frontend'
                       ? frontendComponentTypes.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))
                       : backendComponentTypes.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))
                     }
                   </SelectContent>
                 </Select>
@@ -1164,20 +625,20 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     <div className="flex items-center gap-2">
                       <RadioGroup defaultValue="default" className="flex gap-4">
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem 
-                            value="default" 
-                            id="default" 
-                            checked={!isEditingPrompt} 
-                            onClick={() => setIsEditingPrompt(false)} 
+                          <RadioGroupItem
+                            value="default"
+                            id="default"
+                            checked={!isEditingPrompt}
+                            onClick={() => setIsEditingPrompt(false)}
                           />
                           <Label htmlFor="default">Use Default</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem 
-                            value="custom" 
-                            id="custom" 
-                            checked={isEditingPrompt} 
-                            onClick={() => setIsEditingPrompt(true)} 
+                          <RadioGroupItem
+                            value="custom"
+                            id="custom"
+                            checked={isEditingPrompt}
+                            onClick={() => setIsEditingPrompt(true)}
                           />
                           <Label htmlFor="custom">Customize</Label>
                         </div>
@@ -1186,7 +647,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                   </div>
 
                   {isEditingPrompt ? (
-                    <Textarea 
+                    <Textarea
                       className="min-h-32"
                       value={promptText}
                       onChange={(e) => setPromptText(e.target.value)}
@@ -1208,7 +669,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
           {generatedFiles.length > 0 && (
             <Card className="p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">Step 4: Generated Code</h2>
-              
+
               <Tabs defaultValue="code">
                 <TabsList>
                   <TabsTrigger value="code">Code</TabsTrigger>
@@ -1219,9 +680,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                       {generatedFiles.map((file) => (
                         <button
                           key={file.id}
-                          className={`flex items-center px-3 py-2 text-sm font-medium whitespace-nowrap ${
-                            file.id === activeFileId ? 'bg-secondary rounded-t border-b-2 border-blue-500' : 'text-muted-foreground'
-                          }`}
+                          className={`flex items-center px-3 py-2 text-sm font-medium whitespace-nowrap ${file.id === activeFileId ? 'bg-secondary rounded-t border-b-2 border-blue-500' : 'text-muted-foreground'
+                            }`}
                           onClick={() => setActiveFileId(file.id)}
                         >
                           <FileCode className="h-4 w-4 mr-2" />
@@ -1229,16 +689,16 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                         </button>
                       ))}
                     </div>
-                    
+
                     {activeFileId && (
                       <div className="code-block mb-4">
                         <pre className="text-sm max-h-96 overflow-auto bg-secondary p-4 rounded-md">
                           <code>{generatedFiles.find(f => f.id === activeFileId)?.code}</code>
                         </pre>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="copy-button absolute top-2 right-2" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="copy-button absolute top-2 right-2"
                           onClick={handleCopyCode}
                         >
                           <Copy className="h-4 w-4" />
@@ -1246,7 +706,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={handleCopyCode}>
                       <Copy className="h-4 w-4 mr-2" /> Copy Current File
@@ -1263,13 +723,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                   </div>
                 </TabsContent>
               </Tabs>
-              
+
               <div className="mt-6">
                 <h3 className="text-lg font-medium mb-3">Regenerate Code</h3>
                 <p className="text-sm text-muted-foreground mb-3">
                   Provide additional instructions to improve or modify a specific file.
                 </p>
-                
+
                 <div className="grid grid-cols-1 gap-4 mb-4">
                   <div>
                     <Label htmlFor="regenerateFileName" className="mb-2 block">File to Regenerate</Label>
@@ -1284,10 +744,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="regenerationPrompt" className="mb-2 block">Regeneration Instructions</Label>
-                    <Textarea 
+                    <Textarea
                       id="regenerationPrompt"
                       placeholder="Example: Add pagination to the user list, improve error handling..."
                       value={regenerationPrompt}
@@ -1295,7 +755,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                     />
                   </div>
                 </div>
-                
+
                 <Button onClick={handleRegenerateCode}>
                   <RefreshCw className="h-4 w-4 mr-2" /> Regenerate File
                 </Button>
